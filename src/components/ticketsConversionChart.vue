@@ -391,26 +391,32 @@ export default {
 
       // Mapear los datos agrupados para calcular los totales
       return R.map((group) => {
-        const visitor_total_visits = R.sum(
-          R.pluck("visitor_total_visits", group.items)
+        // Obtener los totales dinámicamente desde los indicadores en sectionIndicators
+        const totals = R.reduce(
+          (acc, indicator) => {
+            acc[indicator] = R.sum(R.pluck(indicator, group.items));
+            return acc;
+          },
+          {},
+          this.sectionIndicators
         );
-        const visitor_total_tickets = R.sum(
-          R.pluck("visitor_total_tickets", group.items)
+
+        // Calcular la conversión dinámica
+        totals[this.conversionIndicator.indicator] = this.calculateConversion(
+          totals[this.conversionIndicator.firstIndicator],
+          totals[this.conversionIndicator.secondIndicator]
         );
-        const calculated_total_convertion = this.calculateConversion(
-          visitor_total_visits,
-          visitor_total_tickets
-        );
+
+        // Definir la etiqueta (label) según el período
         const label =
           period === "weekly"
             ? group.key.replace(/_/g, " ")
             : moment(group.key).format("MMMM YYYY");
 
+        // Retornar el objeto con los totales y la fecha formateada
         return {
           date: label,
-          visitor_total_visits,
-          visitor_total_tickets,
-          calculated_total_convertion,
+          ...totals,
         };
       }, groupedArray);
     },
