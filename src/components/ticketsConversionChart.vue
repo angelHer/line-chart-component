@@ -302,6 +302,14 @@ export default {
       return this.processData("daily");
     },
 
+    weeklyData() {
+      return this.processData("weekly");
+    },
+
+    monthlyData() {
+      return this.processData("monthly");
+    },
+
     chartData() {
       return this.getChartData();
     },
@@ -338,12 +346,11 @@ export default {
 
       // Ordenar los datos por fecha
       const sortedData = R.sortBy(R.prop("date"), data);
-
       if (period === "daily") {
         return R.map(
           (item) => ({
-            date: item.date.format("ddd DD/MM/YYYY"),
             ...item,
+            date: item.date.format("ddd DD/MM/YYYY"),
             [this.conversionIndicator.indicator]: this.calculateConversion(
               item[this.conversionIndicator.firstIndicator],
               item[this.conversionIndicator.secondIndicator]
@@ -359,6 +366,65 @@ export default {
     calculateConversion(prop1, prop2) {
       return prop1 !== 0 ? (prop2 * 100) / prop1 : 0;
     },
+    aggregateData(data, period) {
+      let groupByFn;
+      if (period === "weekly") {
+        groupByFn = (item) =>
+          `Semana_${item.date.isoWeek()}_${item.date.isoWeekYear()}`;
+      } else if (period === "monthly") {
+        groupByFn = (item) => item.date.format("YYYY-MM");
+      }
+
+      // Agrupar los datos usando Ramda
+      const groupedData = R.groupBy(groupByFn, data);
+
+      // Convertir el objeto agrupado en un array y filtrar períodos incompletos
+      const groupedArray = R.pipe(
+        R.toPairs,
+        R.map(([key, items]) => ({
+          key,
+          items,
+          isComplete: this.isPeriodComplete(items, period),
+        })),
+        R.filter(R.prop("isComplete"))
+      )(groupedData);
+
+      // Mapear los datos agrupados para calcular los totales
+      return R.map((group) => {
+        const visitor_total_visits = R.sum(
+          R.pluck("visitor_total_visits", group.items)
+        );
+        const visitor_total_tickets = R.sum(
+          R.pluck("visitor_total_tickets", group.items)
+        );
+        const calculated_total_convertion = this.calculateConversion(
+          visitor_total_visits,
+          visitor_total_tickets
+        );
+        const label =
+          period === "weekly"
+            ? group.key.replace(/_/g, " ")
+            : moment(group.key).format("MMMM YYYY");
+
+        return {
+          date: label,
+          visitor_total_visits,
+          visitor_total_tickets,
+          calculated_total_convertion,
+        };
+      }, groupedArray);
+    },
+    isPeriodComplete(items, periodType) {
+      if (periodType === "weekly") {
+        return items.length === 7;
+      } else if (periodType === "monthly") {
+        const date = items[0].date;
+        const daysInMonth = date.daysInMonth();
+        return items.length === daysInMonth;
+      }
+      return true;
+    },
+
     getChartData() {
       let groupedData;
       if (this.timePeriod === "daily") {
