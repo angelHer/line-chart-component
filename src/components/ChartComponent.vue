@@ -20,7 +20,6 @@ export default {
   data() {
     return {
       position: "relative",
-      colors: ["#2cae79", "#70c2b5", "#ffffff"],
     };
   },
 
