@@ -38,7 +38,6 @@ import moment from "moment";
 import ChartComponent from "./ChartComponent.vue";
 
 import { storeData } from "./data";
-import { brandIndicators } from "./brandIndicators";
 
 import "moment/locale/es";
 moment.locale("es");
@@ -51,7 +50,6 @@ export default {
   data() {
     return {
       storeData,
-      brandIndicators,
       themeColors: {
         accent: "#E0E0E0",
         background: "#efefef",
@@ -125,32 +123,6 @@ export default {
   },
 
   computed: {
-    data() {
-      return {
-        labels: ["January", "February", "March", "April", "May", "June"],
-        datasets: [
-          {
-            label: "Test",
-            data: [10, 20, 30, 40, 50, 60],
-            yAxisID: R.path(
-              ["indicators", "visitor_total_tickets", "axisId"],
-              this.chartConfig
-            ),
-            backgroundColor: this.getGradientFill("visitor_total_tickets"),
-            fill: true,
-            showLine: true,
-            stepped: true,
-            pointRadius: 4,
-            pointHoverRadius: 5,
-            borderColor: R.path(
-              ["visitor_total_tickets", "line"],
-              this.chartConfig.colors
-            ),
-            borderWidth: 1.5,
-          },
-        ],
-      };
-    },
     configChart() {
       return {
         responsive: true,
@@ -408,73 +380,33 @@ export default {
         groupedData
       );
 
-      const chartConfig = R.prop("indicators", this.chartConfig);
       return {
         labels,
         datasets: [
-          {
-            label: R.path(["visitor_total_visits", "label"], chartConfig),
-            data: visitorTotalVisits,
-            yAxisID: R.path(["visitor_total_visits", "axisId"], chartConfig),
-            backgroundColor: this.getGradientFill("visitor_total_visits"),
-            fill: R.path(["visitor_total_visits", "fill"], chartConfig),
-            showLine: R.path(["visitor_total_visits", "showLine"], chartConfig),
-            stepped: true,
-            pointRadius: 4,
-            pointHoverRadius: 5,
-            borderColor: R.path(
-              ["visitor_total_visits", "line"],
-              this.chartConfig.colors
-            ),
-            borderWidth: 1.5,
-          },
-          {
-            label: R.path(["visitor_total_tickets", "label"], chartConfig),
-            data: visitorTotalTickets,
-            yAxisID: R.path(["visitor_total_tickets", "axisId"], chartConfig),
-            backgroundColor: this.getGradientFill("visitor_total_tickets"),
-            fill: R.path(["visitor_total_tickets", "fill"], chartConfig),
-            showLine: R.path(
-              ["visitor_total_tickets", "showLine"],
-              chartConfig
-            ),
-            stepped: true,
-            pointRadius: 4,
-            pointHoverRadius: 5,
-            borderColor: R.path(
-              ["visitor_total_tickets", "line"],
-              this.chartConfig.colors
-            ),
-            borderWidth: 1.5,
-          },
-          {
-            label: R.path(
-              ["calculated_total_convertion", "label"],
-              chartConfig
-            ),
-            data: calculatedTotalConvertion,
-            yAxisID: R.path(
-              ["calculated_total_convertion", "axisId"],
-              chartConfig
-            ),
-            backgroundColor: this.getGradientFill(
-              "calculated_total_convertion"
-            ),
-            fill: R.path(["calculated_total_convertion", "fill"], chartConfig),
-            showLine: R.path(
-              ["calculated_total_convertion", "showLine"],
-              chartConfig
-            ),
-            stepped: true,
-            pointRadius: 4,
-            pointHoverRadius: 5,
-            borderColor: R.path(
-              ["calculated_total_convertion", "line"],
-              this.chartConfig.colors
-            ),
-            borderWidth: 1.5,
-          },
+          this.createDataset("visitor_total_visits", visitorTotalVisits),
+          this.createDataset("visitor_total_tickets", visitorTotalTickets),
+          this.createDataset(
+            "calculated_total_convertion",
+            calculatedTotalConvertion
+          ),
         ],
+      };
+    },
+
+    createDataset(key, data) {
+      const chartConfig = R.prop("indicators", this.chartConfig);
+      return {
+        label: R.path([key, "label"], chartConfig),
+        data: data,
+        yAxisID: R.path([key, "axisId"], chartConfig),
+        backgroundColor: this.getGradientFill(key),
+        fill: R.path([key, "fill"], chartConfig),
+        showLine: R.path([key, "showLine"], chartConfig),
+        stepped: true,
+        pointRadius: 4,
+        pointHoverRadius: 5,
+        borderColor: R.path([key, "line"], this.chartConfig.colors),
+        borderWidth: 1.5,
       };
     },
   },
