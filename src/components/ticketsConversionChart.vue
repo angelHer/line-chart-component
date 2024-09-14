@@ -121,95 +121,40 @@ export default {
         responsive: true,
         hoverMode: "nearest",
         stacked: false,
-        // tooltips: {
-        //   custom: function (tooltip) {
-        //     if (!tooltip) return;
-        //     tooltip.displayColors = false;
-        //   },
-        //   callbacks: {
-        //     title: (tooltipItem, data) => {
-        //       const dataset = R.nth(tooltipItem[0].datasetIndex, data.datasets);
-        //       const pointData = R.nth(tooltipItem[0].index, dataset.data);
-        //       return pointData.x;
-        //     },
-        //     label: (tooltipItem, data) => {
-        //       const dataset = data.datasets[tooltipItem.datasetIndex];
-        //       if (dataset.hidden) {
-        //         return "";
-        //       }
+        tooltips: {
+          custom: function (tooltip) {
+            if (!tooltip) return;
+            tooltip.displayColors = false;
+          },
+          callbacks: {
+            label: (tooltipItem, data) => {
+              const dataset = data.datasets[tooltipItem.datasetIndex];
+              if (dataset.hidden) {
+                return "";
+              }
 
-        //       let label = dataset.label;
-        //       if (
-        //         data.datasets[tooltipItem.datasetIndex].yAxisID === "y-axis-2"
-        //       ) {
-        //         return `${label} ${this.$options.filters[
-        //           this.chartConfig.scales.axisRight.filter
-        //         ](tooltipItem.value)}`;
-        //       } else {
-        //         return `${label} ${this.$options.filters[
-        //           this.chartConfig.scales.axisLeft.filter
-        //         ](tooltipItem.value)}`;
-        //       }
-        //     },
-        //   },
-        // },
+              let label = dataset.label;
+              if (
+                data.datasets[tooltipItem.datasetIndex].yAxisID === "y-axis-2"
+              ) {
+                return `${label} ${this.$options.filters[
+                  this.chartConfig.scales.axisRight.filter
+                ](tooltipItem.value)}`;
+              } else {
+                return `${label} ${this.$options.filters[
+                  this.chartConfig.scales.axisLeft.filter
+                ](tooltipItem.value)}`;
+              }
+            },
+          },
+        },
         legend: {
           display: true,
           position: "bottom",
           labels: {
             fontColor: this.themeColors.text,
             usePointStyle: true,
-            // generateLabels: function (chart) {
-            //   const data = chart.data;
-            //   const allLabels = data.datasets.map((dataset, index) => ({
-            //     text: dataset.label,
-            //     datasetIndex: index,
-            //     hidden: R.has(dataset.label, vm.hiddenDatasets)
-            //       ? vm.hiddenDatasets[dataset.label]
-            //       : !chart.isDatasetVisible(index),
-            //     fillStyle: dataset.backgroundColor,
-            //     strokeStyle: dataset.borderColor,
-            //     lineWidth: dataset.borderWidth,
-            //   }));
-
-            //   // Filtrar etiquetas duplicadas
-            //   const uniqueLabels = [];
-            //   const uniqueTexts = new Set();
-
-            //   allLabels.forEach((label) => {
-            //     if (
-            //       !label.text.endsWith("-marginOfError") &&
-            //       !uniqueTexts.has(label.text)
-            //     ) {
-            //       uniqueLabels.push(label);
-            //       uniqueTexts.add(label.text);
-            //     }
-            //   });
-
-            //   return uniqueLabels;
-            // },
           },
-          //   onClick: function (e, legendItem) {
-          //     const chart = this.chart;
-
-          //     const label = legendItem.text;
-          //     const errorLabel = `${label}-marginOfError`;
-          //     const errorLabelPattern = new RegExp(`^${label}-marginOfError$`);
-
-          //     // Alternar la visibilidad de todos los datasets con la misma etiqueta
-          //     chart.data.datasets.forEach((dataset, i) => {
-          //       if (
-          //         dataset.label === label ||
-          //         errorLabelPattern.test(dataset.label)
-          //       ) {
-          //         const meta = chart.getDatasetMeta(i);
-          //         meta.hidden = !meta.hidden;
-          //         vm.updateHiddenDatasets(dataset.label, meta.hidden);
-          //       }
-          //     });
-
-          //     chart.update();
-          //   },
         },
         title: {
           display: false,
