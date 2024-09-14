@@ -372,20 +372,55 @@ export default {
     calculateConversion(prop1, prop2) {
       return prop1 !== 0 ? (prop2 * 100) / prop1 : 0;
     },
+    /**
+     * Agrega los datos agrupados y calcula los totales según el período.
+     * @param {Array} data - Datos ordenados a procesar.
+     * @param {String} period - Período de agrupación ('weekly' o 'monthly').
+     * @returns {Array} - Datos agrupados y agregados.
+     */
     aggregateData(data, period) {
-      let groupByFn;
+      const groupByFn = this.getGroupByFunction(period);
+      const groupedData = this.groupDataByPeriod(data, groupByFn);
+      const completeGroups = this.filterCompletePeriods(groupedData, period);
+      const aggregatedData = this.calculateAggregatedTotals(
+        completeGroups,
+        period
+      );
+      return aggregatedData;
+    },
+
+    /**
+     * Obtiene la función de agrupación basada en el período.
+     * @param {String} period - Período de agrupación ('weekly' o 'monthly').
+     * @returns {Function} - Función para agrupar los datos.
+     */
+    getGroupByFunction(period) {
       if (period === "weekly") {
-        groupByFn = (item) =>
+        return (item) =>
           `Semana_${item.date.isoWeek()}_${item.date.isoWeekYear()}`;
       } else if (period === "monthly") {
-        groupByFn = (item) => item.date.format("YYYY-MM");
+        return (item) => item.date.format("YYYY-MM");
       }
+    },
 
-      // Agrupar los datos usando Ramda
-      const groupedData = R.groupBy(groupByFn, data);
+    /**
+     * Agrupa los datos por el período especificado.
+     * @param {Array} data - Datos a agrupar.
+     * @param {Function} groupByFn - Función de agrupación.
+     * @returns {Object} - Datos agrupados.
+     */
+    groupDataByPeriod(data, groupByFn) {
+      return R.groupBy(groupByFn, data);
+    },
 
-      // Convertir el objeto agrupado en un array y filtrar períodos incompletos
-      const groupedArray = R.pipe(
+    /**
+     * Filtra los períodos incompletos basados en el período de agrupación.
+     * @param {Object} groupedData - Datos agrupados.
+     * @param {String} period - Período de agrupación.
+     * @returns {Array} - Array de grupos completos.
+     */
+    filterCompletePeriods(groupedData, period) {
+      return R.pipe(
         R.toPairs,
         R.map(([key, items]) => ({
           key,
@@ -394,37 +429,59 @@ export default {
         })),
         R.filter(R.prop("isComplete"))
       )(groupedData);
+    },
 
-      // Mapear los datos agrupados para calcular los totales
+    /**
+     * Calcula los totales agregados para cada grupo.
+     * @param {Array} groups - Grupos de datos completos.
+     * @param {String} period - Período de agrupación.
+     * @returns {Array} - Datos con totales agregados y etiquetas formateadas.
+     */
+    calculateAggregatedTotals(groups, period) {
       return R.map((group) => {
-        // Obtener los totales dinámicamente desde los indicadores en sectionIndicators
-        const totals = R.reduce(
-          (acc, indicator) => {
-            acc[indicator] = R.sum(R.pluck(indicator, group.items));
-            return acc;
-          },
-          {},
-          this.sectionIndicators
-        );
-
-        // Calcular la conversión dinámica
+        const totals = this.calculateTotalsForGroup(group.items);
         totals[this.conversionIndicator.indicator] = this.calculateConversion(
           totals[this.conversionIndicator.firstIndicator],
           totals[this.conversionIndicator.secondIndicator]
         );
-
-        // Definir la etiqueta (label) según el período
-        const label =
-          period === "weekly"
-            ? group.key.replace(/_/g, " ")
-            : moment(group.key).format("MMMM YYYY");
-
-        // Retornar el objeto con los totales y la fecha formateada
+        const label = this.getGroupLabel(group.key, period);
         return {
           date: label,
           ...totals,
         };
-      }, groupedArray);
+      }, groups);
+    },
+
+    /**
+     * Calcula los totales para un grupo de elementos.
+     * @param {Array} items - Elementos del grupo.
+     * @returns {Object} - Totales calculados para el grupo.
+     */
+    calculateTotalsForGroup(items) {
+      return R.reduce(
+        (acc, indicator) => {
+          acc[indicator] = R.sum(R.pluck(indicator, items));
+          return acc;
+        },
+        {},
+        this.sectionIndicators
+      );
+    },
+
+    /**
+     * Obtiene la etiqueta formateada para un grupo.
+     * @param {String} groupKey - Clave del grupo.
+     * @param {String} period - Período de agrupación.
+     * @returns {String} - Etiqueta formateada.
+     */
+    getGroupLabel(groupKey, period) {
+      if (period === "weekly") {
+        return groupKey.replace(/_/g, " ");
+      } else if (period === "monthly") {
+        return moment(groupKey, "YYYY-MM").format("MMMM YYYY");
+      } else {
+        return groupKey;
+      }
     },
     isPeriodComplete(items, periodType) {
       if (periodType === "weekly") {
@@ -468,7 +525,6 @@ export default {
         backgroundColor: this.getGradientFill(key),
         fill: R.path([key, "fill"], chartConfig),
         showLine: R.path([key, "showLine"], chartConfig),
-        stepped: true,
         pointRadius: 4,
         pointHoverRadius: 5,
         borderColor: R.path([key, "line"], this.chartConfig.colors),
