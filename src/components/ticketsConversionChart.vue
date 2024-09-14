@@ -2,25 +2,13 @@
   <div>
     <ul class="chart-period-list">
       <li
+        v-for="period in periods"
+        :key="period.key"
         class="period-item"
-        v-bind:class="{ 'period-item--active': timePeriod === 'daily' }"
-        @click="selectPeriod('daily')"
+        v-bind:class="{ 'period-item--active': timePeriod === period.key }"
+        @click="selectPeriod(period.key)"
       >
-        Diario
-      </li>
-      <li
-        class="period-item"
-        v-bind:class="{ 'period-item--active': timePeriod === 'weekly' }"
-        @click="selectPeriod('weekly')"
-      >
-        Semanal
-      </li>
-      <li
-        class="period-item"
-        v-bind:class="{ 'period-item--active': timePeriod === 'monthly' }"
-        @click="selectPeriod('monthly')"
-      >
-        Mensual
+        {{ period.label }}
       </li>
     </ul>
     <chart-component
@@ -308,6 +296,24 @@ export default {
 
     monthlyData() {
       return this.processData("monthly");
+    },
+
+    hasValidWeeks() {
+      return this.weeklyData.length > 0;
+    },
+
+    hasValidMonths() {
+      return this.monthlyData.length > 0;
+    },
+
+    periods() {
+      const periods = [
+        { key: "daily", label: "Diario", condition: true },
+        { key: "weekly", label: "Semanal", condition: this.hasValidWeeks },
+        { key: "monthly", label: "Mensual", condition: this.hasValidMonths },
+      ];
+
+      return R.filter((period) => period.condition, periods);
     },
 
     chartData() {
