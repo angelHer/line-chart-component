@@ -118,6 +118,11 @@ export default {
         "visitor_total_tickets",
         "calculated_total_convertion",
       ],
+      conversionIndicator: {
+        indicator: "calculated_total_convertion",
+        firstIndicator: "visitor_total_visits",
+        secondIndicator: "visitor_total_tickets",
+      },
       timePeriod: "daily",
     };
   },
@@ -326,8 +331,7 @@ export default {
       const data = R.map(
         (item) => ({
           date: moment(item.date, "YYYY-MM-DD"),
-          visitor_total_visits: item.visitor_total_visits,
-          visitor_total_tickets: item.visitor_total_tickets,
+          ...R.pick(this.sectionIndicators, item),
         }),
         this.storeData
       );
@@ -339,11 +343,10 @@ export default {
         return R.map(
           (item) => ({
             date: item.date.format("ddd DD/MM/YYYY"),
-            visitor_total_visits: item.visitor_total_visits,
-            visitor_total_tickets: item.visitor_total_tickets,
-            calculated_total_convertion: this.calculateConversion(
-              item.visitor_total_visits,
-              item.visitor_total_tickets
+            ...item,
+            [this.conversionIndicator.indicator]: this.calculateConversion(
+              item[this.conversionIndicator.firstIndicator],
+              item[this.conversionIndicator.secondIndicator]
             ),
           }),
           sortedData
@@ -353,8 +356,8 @@ export default {
         return grouped;
       }
     },
-    calculateConversion(visits, tickets) {
-      return visits !== 0 ? (tickets * 100) / visits : 0;
+    calculateConversion(prop1, prop2) {
+      return prop1 !== 0 ? (prop2 * 100) / prop1 : 0;
     },
     getChartData() {
       let groupedData;
@@ -367,29 +370,14 @@ export default {
       }
 
       const labels = R.map((item) => item.date, groupedData);
-      const visitorTotalVisits = R.map(
-        (item) => item.visitor_total_visits,
-        groupedData
-      );
-      const visitorTotalTickets = R.map(
-        (item) => item.visitor_total_tickets,
-        groupedData
-      );
-      const calculatedTotalConvertion = R.map(
-        (item) => item.calculated_total_convertion,
-        groupedData
-      );
+      const datasets = this.sectionIndicators.map((indicator) => {
+        const data = R.map((item) => item[indicator], groupedData);
+        return this.createDataset(indicator, data);
+      });
 
       return {
         labels,
-        datasets: [
-          this.createDataset("visitor_total_visits", visitorTotalVisits),
-          this.createDataset("visitor_total_tickets", visitorTotalTickets),
-          this.createDataset(
-            "calculated_total_convertion",
-            calculatedTotalConvertion
-          ),
-        ],
+        datasets,
       };
     },
 
