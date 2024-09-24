@@ -1,16 +1,27 @@
 <template>
   <div>
-    <ul class="chart-period-list">
-      <li
-        v-for="period in periods"
-        :key="period.key"
-        class="period-item"
-        v-bind:class="{ 'period-item--active': timePeriod === period.key }"
-        @click="selectPeriod(period.key)"
-      >
-        {{ period.label }}
-      </li>
-    </ul>
+    <div class="chart-header">
+      <ul class="chart-period-list">
+        <li
+          v-for="period in periods"
+          :key="period.key"
+          class="period-item"
+          v-bind:class="{ 'period-item--active': timePeriod === period.key }"
+          @click="selectPeriod(period.key)"
+        >
+          {{ period.label }}
+        </li>
+      </ul>
+      <div v-if="datesOff.length > 0">
+        <input
+          type="checkbox"
+          name="showDatesOff"
+          v-model="showDatesOff"
+          class="dates-off_check"
+        />
+        <label for="showDatesOff">Mostrar dias apagados</label>
+      </div>
+    </div>
     <chart-component
       :height="200"
       :chart-data="chartData"
@@ -38,6 +49,7 @@ export default {
   data() {
     return {
       storeData,
+      showDatesOff: false,
       themeColors: {
         accent: "#E0E0E0",
         background: "#efefef",
@@ -83,21 +95,18 @@ export default {
             stop2: "rgba(27, 105, 74, 0.2)",
             linear: 600,
             line: "rgba(91, 237, 177, 7)",
-            marginOfError: "rgba(91, 237, 177, 0.3)",
           },
           visitor_total_visits: {
             stop1: "rgba(61, 133, 119, 0.8)",
             stop2: "rgba(151, 242, 228, 0.1)",
             linear: 700,
             line: "rgba(61, 133, 119, 1)",
-            marginOfError: "rgba(61, 133, 119, 0.3)",
           },
           calculated_total_convertion: {
-            stop1: "rgba(151, 242, 228, 1)",
-            stop2: "rgba(255, 255, 255, 0.5)",
+            stop1: "rgba(63, 249, 172, 0.8)",
+            stop2: "rgba(63, 249, 172, 0.2)",
             linear: 10,
-            line: "rgba(151, 242, 228, 1)",
-            marginOfError: "rgba(151, 242, 228, 0.3)",
+            line: "rgba(6, 22, 15, 1)",
           },
         },
       },
@@ -116,6 +125,23 @@ export default {
   },
 
   computed: {
+    storeDataValidated() {
+      return R.map(
+        (data) => ({
+          ...data,
+          uptimeValidated: this.isRejectedDate(data) ? 0 : data.uptime_total,
+        }),
+        this.storeData
+      );
+    },
+
+    datesOff() {
+      return R.pluck(
+        "date",
+        R.filter((data) => data.uptimeValidated === 0, this.storeDataValidated)
+      );
+    },
+
     configChart() {
       return {
         responsive: true,
@@ -476,11 +502,27 @@ export default {
         borderWidth: 1.5,
       };
     },
+
+    isRejectedDate({
+      visitor_total_peasents = 0,
+      visitor_total_viewer = 0,
+      visitor_total_visits = 0,
+    }) {
+      const totalActivity =
+        visitor_total_peasents + visitor_total_viewer + visitor_total_visits;
+      return totalActivity === 0;
+    },
   },
 };
 </script>
 
 <style>
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .chart-period-list {
   list-style: none;
   display: flex;
