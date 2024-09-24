@@ -15,11 +15,11 @@
       <div v-if="datesOff.length > 0">
         <input
           type="checkbox"
-          name="showDatesOff"
-          v-model="showDatesOff"
+          name="showOffDays"
+          v-model="showOffDays"
           class="dates-off_check"
         />
-        <label for="showDatesOff">Mostrar dias apagados</label>
+        <label for="showOffDays">Mostrar dias apagados</label>
       </div>
     </div>
     <chart-component
@@ -49,7 +49,7 @@ export default {
   data() {
     return {
       storeData,
-      showDatesOff: false,
+      showOffDays: false,
       themeColors: {
         accent: "#E0E0E0",
         background: "#efefef",
@@ -313,33 +313,46 @@ export default {
     },
 
     processData(period) {
-      const data = R.map(
-        (item) => ({
-          date: moment(item.date, "YYYY-MM-DD"),
-          ...R.pick(this.sectionIndicators, item),
-        }),
-        this.storeData
-      );
+      const processedData = R.pipe(
+        R.map((item) => {
+          const dateMoment = moment(item.date, "YYYY-MM-DD");
+          const isOffDay = this.isRejectedDate(item);
 
-      // Ordenar los datos por fecha
-      const sortedData = R.sortBy(R.prop("date"), data);
+          let indicators = R.pick(this.sectionIndicators, item);
+          if (!this.showOffDays && isOffDay) {
+            indicators = R.map(() => 0, indicators);
+          }
+
+          indicators[this.conversionIndicator.indicator] =
+            this.calculateConversion(
+              indicators[this.conversionIndicator.firstIndicator],
+              indicators[this.conversionIndicator.secondIndicator]
+            );
+
+          const formattedDate =
+            period === "daily"
+              ? dateMoment.format("ddd DD/MM/YYYY")
+              : dateMoment;
+
+          return {
+            date: formattedDate,
+            ...indicators,
+            isOffDay,
+            dateMoment,
+          };
+        }),
+        R.sortBy(R.prop("dateMoment"))
+      )(this.storeData);
+
       if (period === "daily") {
-        return R.map(
-          (item) => ({
-            ...item,
-            date: item.date.format("ddd DD/MM/YYYY"),
-            [this.conversionIndicator.indicator]: this.calculateConversion(
-              item[this.conversionIndicator.firstIndicator],
-              item[this.conversionIndicator.secondIndicator]
-            ),
-          }),
-          sortedData
-        );
+        return processedData;
       } else {
-        const grouped = this.aggregateData(sortedData, period);
+        // Para períodos semanales o mensuales, agrupamos y agregamos los datos
+        const grouped = this.aggregateData(processedData, period);
         return grouped;
       }
     },
+
     calculateConversion(prop1, prop2) {
       return prop1 !== 0 ? (prop2 * 100) / prop1 : 0;
     },
@@ -478,7 +491,12 @@ export default {
       const labels = R.map((item) => item.date, groupedData);
       const datasets = this.sectionIndicators.map((indicator) => {
         const data = R.map((item) => item[indicator], groupedData);
-        return this.createDataset(indicator, data);
+        const offDayFlags = R.map(
+          (item) =>
+            this.timePeriod === "daily" ? item.isOffDay : item.hasOffDay,
+          groupedData
+        );
+        return this.createDataset(indicator, data, offDayFlags);
       });
 
       return {
@@ -487,8 +505,13 @@ export default {
       };
     },
 
-    createDataset(key, data) {
+    createDataset(key, data, offDayFlags) {
       const chartConfig = R.prop("indicators", this.chartConfig);
+      const pointBackgroundColors = R.map(
+        (isOffDay) => (isOffDay && !this.showOffDays ? "#c2313f" : undefined),
+        offDayFlags
+      );
+
       return {
         label: R.path([key, "label"], chartConfig),
         data: data,
@@ -500,6 +523,7 @@ export default {
         pointHoverRadius: 5,
         borderColor: R.path([key, "line"], this.chartConfig.colors),
         borderWidth: 1.5,
+        pointBackgroundColor: pointBackgroundColors,
       };
     },
 
@@ -507,10 +531,11 @@ export default {
       visitor_total_peasents = 0,
       visitor_total_viewer = 0,
       visitor_total_visits = 0,
+      uptime_total,
     }) {
       const totalActivity =
         visitor_total_peasents + visitor_total_viewer + visitor_total_visits;
-      return totalActivity === 0;
+      return totalActivity === 0 || uptime_total == 0;
     },
   },
 };
