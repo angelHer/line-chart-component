@@ -429,9 +429,12 @@ export default {
           totals[this.conversionIndicator.secondIndicator]
         );
         const label = this.getGroupLabel(group.key, period);
+        const hasOffDay = group.items.some((item) => item.isOffDay);
+
         return {
           date: label,
           ...totals,
+          hasOffDay,
         };
       }, groups);
     },
@@ -444,7 +447,10 @@ export default {
     calculateTotalsForGroup(items) {
       return R.reduce(
         (acc, indicator) => {
-          acc[indicator] = R.sum(R.pluck(indicator, items));
+          const values = R.map((item) => {
+            return !this.showOffDays && item.isOffDay ? 0 : item[indicator];
+          }, items);
+          acc[indicator] = R.sum(values);
           return acc;
         },
         {},
@@ -524,6 +530,7 @@ export default {
         borderColor: R.path([key, "line"], this.chartConfig.colors),
         borderWidth: 1.5,
         pointBackgroundColor: pointBackgroundColors,
+        pointBorderColor: pointBackgroundColors,
       };
     },
 
